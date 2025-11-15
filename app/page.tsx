@@ -1,65 +1,219 @@
-import Image from "next/image";
+'use client'; 
+
+import { useState, useRef, type DragEvent, type ChangeEvent, type FormEvent } from 'react';
+import { UploadCloud, FileText, X, Loader2 } from 'lucide-react';
+
+const PERMITTED_FILE_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain'
+];
 
 export default function Home() {
+  const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (selectedFile: File) => {
+    if (!PERMITTED_FILE_TYPES.includes(selectedFile.type)) {
+      setError('Tipo de arquivo inválido. Por favor, envie PDF, DOCX ou TXT.');
+      setFile(null);
+      return;
+    }
+
+    if (selectedFile.size > 5 * 1024 * 1024) {
+      setError('Arquivo muito grande. O limite é de 5MB.');
+      setFile(null);
+      return;
+    }
+
+    setError(null);
+    setFile(selectedFile);
+  };
+
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0]);
+    }
+  };
+
+  const removeFile = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setFile(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!file) {
+      setError('Por favor, selecione um arquivo para analisar.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    try {
+      const response = await fetch('/api/analyze-resume', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Falha ao enviar o currículo.');
+      }
+
+      const result = await response.json();
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+      <div className="w-full max-w-xl p-8 bg-white border border-gray-200 rounded-2xl shadow-xl">
+        
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Analisador de Currículo ATS
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-2 text-md text-gray-600">
+            Envie seu currículo e veja como a Inteligência Artificial
+            avalia seu perfil para o mercado de trabalho.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div
+            className={`
+              relative flex flex-col items-center justify-center w-full p-12 
+              border-2 border-dashed rounded-lg cursor-pointer
+              transition-colors duration-200 ease-in-out
+              ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'}
+              ${error ? 'border-red-500 bg-red-50' : ''}
+            `}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileChange}
+              accept={PERMITTED_FILE_TYPES.join(',')}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+            {!file && (
+              <div className="text-center">
+                <UploadCloud 
+                  className={`w-12 h-12 mx-auto mb-4 
+                  ${isDragging ? 'text-blue-600' : 'text-gray-400'}
+                  ${error ? 'text-red-600' : ''}`} 
+                />
+                <p className="font-semibold text-gray-700">
+                  Arraste e solte seu currículo aqui
+                </p>
+                <p className="text-sm text-gray-500">ou clique para selecionar</p>
+                <p className="mt-3 text-xs text-gray-400">
+                  Formatos permitidos: PDF, DOCX, TXT (Max 5MB)
+                </p>
+              </div>
+            )}
+
+            {file && (
+              <div className="text-center">
+                <FileText className="w-12 h-12 mx-auto mb-4 text-green-600" />
+                <p className="font-semibold text-gray-700">
+                  Arquivo selecionado:
+                </p>
+                <p className="text-sm text-gray-600 break-all">{file.name}</p>
+                
+                <button
+                  type="button"
+                  onClick={removeFile}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                  aria-label="Remover arquivo"
+                  disabled={isLoading}
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600 text-center font-medium">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={!file || isLoading}
+            className={`
+              w-full flex items-center justify-center px-6 py-4 
+              font-semibold text-lg text-white rounded-lg 
+              transition-all duration-200 ease-in-out
+              ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}
+              disabled:bg-gray-400 disabled:cursor-not-allowed
+            `}
           >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              'Analisar Currículo'
+            )}
+          </button>
+        </form>
+      </div>
+    </main>
   );
 }
