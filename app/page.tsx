@@ -2,6 +2,8 @@
 
 import { useState, useRef, type DragEvent, type ChangeEvent, type FormEvent } from 'react';
 import { UploadCloud, FileText, X, Loader2 } from 'lucide-react';
+import { ResumeSchema } from '@/app/lib/ai-response';
+import { findEmptyFields } from '@/app/lib/find-empty-fields';
 
 const PERMITTED_FILE_TYPES = [
   'application/pdf',
@@ -103,13 +105,15 @@ export default function Home() {
 
       const result = await response.json();
 
+      const emptyFields = findEmptyFields(result);
+
+      console.log(emptyFields);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <main className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
