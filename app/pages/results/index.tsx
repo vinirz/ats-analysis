@@ -33,6 +33,18 @@ const fieldName = {
   }
 }
 
+const getReadableName = (path: string) => {
+  const cleanPath = path.replace(/\[\d+\]/g, ''); 
+  
+  const keys = cleanPath.split('.');
+  
+  const result = keys.reduce((acc: any, key) => {
+    return acc && acc[key] ? acc[key] : undefined;
+  }, fieldName);
+
+  return typeof result === 'string' ? result : path;
+};
+
 export default function Results({analysisResult}: { analysisResult: ResumeResponseContent }) {
   const emptyFields = findEmptyFields(analysisResult); 
   const resumeScore = Math.round((TOTAL_RESUME_FIELDS - emptyFields.length) * 100 / TOTAL_RESUME_FIELDS)
@@ -50,7 +62,7 @@ export default function Results({analysisResult}: { analysisResult: ResumeRespon
               {
                 emptyFields.length > 0 ?  emptyFields?.map((field) => (
                   <div key={field} className='p-4 mr-4 bg-red-100 rounded-md w-full'>
-                    <h3 className='font-semibold text-red-700'>Falta: {eval(`fieldName.${field}`)}</h3>
+                    <h3 className='font-semibold text-red-700'>Falta: {getReadableName(field)}</h3>
                   </div>
                 )) : (
                   <div className='p-4 mr-4 bg-emerald-100 rounded-md w-full'>
