@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { ResumeSchema } from "@/app/lib/ai-response";
 
-const { GEMINI_API_KEY } = process.env;
+const { GEMINI_API_KEY, ENVIROMENT } = process.env;
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const PERMITTED_FILE_TYPES = [

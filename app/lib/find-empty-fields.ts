@@ -7,9 +7,11 @@ export function findEmptyFields(
       return [currentPath];
     }
 
-    return value.flatMap((item, index) =>
-      findEmptyFields(item, `${currentPath}[${index}]`)
+    const allErrors = value.flatMap((item) =>
+      findEmptyFields(item, currentPath)
     );
+
+    return Array.from(new Set(allErrors));
   }
 
   if (isNonNullObject(value)) {
